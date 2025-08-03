@@ -24,7 +24,7 @@ This project enables you to ask intelligent questions over a custom CSV (`contex
 ## 🚀 How to Run (in Google Colab)
 
 1. Upload your `context.csv` file.
-2. Make sure your [Groq API Key](https://console.groq.com/) is set via `userdata.get('Groq_AJ')`
+2. Make sure your [Groq API Key](https://console.groq.com/) is set via `userdata.get('your_api_key_name')`
 3. Install required libraries:
    ```bash
    !pip install -q langchain groq langchain-groq chromadb datasets pandas gradio
