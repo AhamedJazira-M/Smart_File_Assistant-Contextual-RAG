@@ -14,11 +14,17 @@ This project enables you to ask intelligent questions over a custom CSV (`contex
 - 🌐 Simple Gradio interface with sample queries
 
 ---
+## Updated Features
+- Now You can upload the file in real-time.
+- It supports pdf, csv, txt, docx.
+- Pleasant theme updated.
+---
 
 ## 📁 Project Structure
 
+├── Installations #Pip installations that are to be done before running the .py file. (colab)
 ├── context.csv # Your knowledge base (upload your own)
-├── app.py # Main RAG pipeline + Gradio interface
+├── Smart File Assistant.py # Main RAG pipeline + Gradio interface
 ├── README.md # You're reading it!
 
 ## 🚀 How to Run (in Google Colab)
