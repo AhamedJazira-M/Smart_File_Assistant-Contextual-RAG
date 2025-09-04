@@ -1,0 +1,6 @@
+!pip install --quiet langchain groq chromadb datasets pandas
+
+!pip install -U langchain-community
+
+!pip install -q langchain-groq
+!pip install PyPDF2 python-docx
