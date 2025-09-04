@@ -1,0 +1,192 @@
+# 📦 IMPORTS
+import os
+import pandas as pd
+import gradio as gr
+import shutil
+
+from langchain.docstore.document import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.runnable import RunnablePassthrough
+from langchain.schema.output_parser import StrOutputParser
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_groq import ChatGroq
+
+# File loaders
+from PyPDF2 import PdfReader
+import docx
+
+# 🔧 ENVIRONMENT SETUP
+from google.colab import userdata
+os.environ["GROQ_API_KEY"] = userdata.get("Groq_AJ")
+
+# 🌌 GLOBALS
+vectorstore, compression_retriever, rag_chain, llm = None, None, None, None
+
+
+# 📂 FILE LOADER FUNCTION
+def load_file(file_path):
+    ext = os.path.splitext(file_path)[1].lower()
+    docs = []
+
+    if ext == ".csv":
+        df = pd.read_csv(file_path)
+        text = "\n".join(df.astype(str).apply(lambda row: " | ".join(row), axis=1))
+        docs.append(Document(page_content=text, metadata={"source": file_path}))
+    elif ext == ".txt":
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            docs.append(Document(page_content=f.read(), metadata={"source": file_path}))
+    elif ext == ".pdf":
+        pdf = PdfReader(file_path)
+        text = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+        docs.append(Document(page_content=text, metadata={"source": file_path}))
+    elif ext == ".docx":
+        doc = docx.Document(file_path)
+        text = "\n".join([para.text for para in doc.paragraphs])
+        docs.append(Document(page_content=text, metadata={"source": file_path}))
+    else:
+        raise ValueError("Unsupported file type.")
+
+    return docs
+
+
+# ⚡ EMBEDDINGS
+def get_embeddings():
+    return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")  # 384d
+
+import tempfile
+
+# ⚙️ PIPELINE SETUP
+def setup_pipeline(file_obj):
+    global vectorstore, compression_retriever, rag_chain, llm
+
+    file_path = file_obj.name if hasattr(file_obj, "name") else file_obj
+
+    try:
+        documents = load_file(file_path)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=80)
+        split_docs = text_splitter.split_documents(documents)
+
+        embeddings = get_embeddings()
+
+        # ✅ Use a new temporary directory each upload to avoid readonly issues
+        persist_dir = tempfile.mkdtemp()
+
+        vectorstore = Chroma.from_documents(
+            split_docs,
+            embeddings,
+            persist_directory=persist_dir
+        )
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+        llm = ChatGroq(api_key=os.environ["GROQ_API_KEY"], model_name="llama-3.1-8b-instant")
+        compressor = LLMChainExtractor.from_llm(llm)
+        compression_retriever = ContextualCompressionRetriever(
+            base_retriever=retriever, base_compressor=compressor
+        )
+
+        template = """
+        You are a helpful assistant. Use the file context below if relevant,
+        but also use your general knowledge when needed. Always answer clearly.
+
+        Context: {context}
+        Question: {input}
+
+        Answer:
+        """
+        prompt = ChatPromptTemplate.from_template(template)
+
+        rag_chain = (
+            {"context": compression_retriever, "input": RunnablePassthrough()}
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
+
+        return f"✅ File uploaded successfully ({os.path.basename(file_path)}).", ""
+
+    except Exception as e:
+        rag_chain, compression_retriever, vectorstore = None, None, None
+        return f"❌ Error during pipeline setup: {str(e)}", ""
+
+
+# 🤖 QA FUNCTION
+def answer_question(query):
+    global rag_chain, compression_retriever
+    if rag_chain is None or compression_retriever is None:
+        return "❌ Please upload a file first.", ""
+
+    try:
+        response = rag_chain.invoke(query)
+        docs = compression_retriever.get_relevant_documents(query)
+        context_used = "\n\n---\n\n".join([doc.page_content[:800] for doc in docs])
+        return response, context_used
+    except Exception as e:
+        return f"⚠️ Error during question answering: {str(e)}", ""
+
+# 🎨 Theme
+theme = gr.themes.Base(
+    primary_hue="indigo",
+    secondary_hue="rose",
+    neutral_hue="slate",
+).set(
+    body_background_fill="linear-gradient(135deg, #fce7f3, #bfdbfe, #ddd6fe, #e0e7ff)",  # rose → blue → violet → indigo
+    block_background_fill="rgba(255, 255, 255, 0.9)",  # translucent white cards
+    block_label_text_color="#1f2937",
+    block_title_text_color="#111827",
+    input_background_fill="#ffffff",
+    button_primary_background_fill="linear-gradient(90deg, #ec4899, #6366f1, #3b82f6)",  # rose → indigo → blue
+    button_primary_text_color="#ffffff",
+)
+
+# 🚀 Gradio App
+example_questions = [
+    "Summarize the document",
+    "What are the key points?",
+    "Explain the main concept",
+    "Give me an overview",
+]
+
+with gr.Blocks(theme=theme, css="""
+  #title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 28px;
+      font-weight: bold;
+      background: linear-gradient(90deg, #ec4899, #6366f1, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+      margin-bottom: 20px;
+  }
+  .gr-textbox textarea {
+      color: #111827 !important;   /* Dark text for readability */
+      background: #ffffff !important;
+      border-radius: 10px;
+  }
+""") as demo:
+    gr.Markdown("<h2 id='title'>📂 Smart File Assistant</h2>")
+    gr.Markdown("Upload a file (CSV, TXT, PDF, DOCX) and ask questions. A vibrant, colorful assistant to help you understand your files 🌈")
+
+    with gr.Row():
+        with gr.Column(scale=1):
+            file_upload = gr.File(label="📂 Upload File", file_types=[".csv", ".txt", ".pdf", ".docx"])
+            upload_status = gr.Textbox(label="📌 Upload Status", interactive=False)
+
+            question_input = gr.Textbox(label="❓ Ask your question", placeholder="Type your question here...", lines=2)
+            submit_btn = gr.Button("💡 Get Answer")
+
+            gr.Examples(example_questions, inputs=question_input)
+
+        with gr.Column(scale=2):
+            response_output = gr.Textbox(label="✅ Answer", lines=8)
+            context_output = gr.Textbox(label="📜 Used Context", lines=12, visible=False)
+
+    file_upload.upload(fn=setup_pipeline, inputs=file_upload, outputs=[upload_status, context_output])
+    submit_btn.click(fn=answer_question, inputs=question_input, outputs=[response_output, context_output])
+
+# ▶️ Launch
+demo.launch()
+
