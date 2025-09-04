@@ -127,7 +127,7 @@ def answer_question(query):
     except Exception as e:
         return f"⚠️ Error during question answering: {str(e)}", ""
 
-# 🎨 Vibrant Light Theme with Colorful Gradient
+# 🎨 Theme
 theme = gr.themes.Base(
     primary_hue="indigo",
     secondary_hue="rose",
