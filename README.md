@@ -34,3 +34,5 @@ This project enables you to ask intelligent questions over a custom CSV (`contex
 3. Install required libraries:
    ```bash
    !pip install -q langchain groq langchain-groq chromadb datasets pandas gradio
+
+<img width="1366" height="768" alt="SmartFileAssistant" src="https://github.com/user-attachments/assets/0f8ad23e-7ad3-4984-8bb6-21e8f608790f" />
