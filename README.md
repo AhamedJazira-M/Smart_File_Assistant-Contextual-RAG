@@ -3,6 +3,9 @@
 
 This project enables you to ask intelligent questions over a custom CSV (`context.csv`) using Groq's blazing-fast **LLaMA 3**, **LangChain**, and **Gradio** UI. It leverages **Contextual Compression Retriever** to provide concise, relevant answers from your documents.
 
+Video Demo : 
+https://www.linkedin.com/posts/ahamed-jazira2301_ai-rag-langchain-activity-7369701798971961348-0TCD?utm_source=share&utm_medium=member_android&rcm=ACoAAEeCTEYBM5NdEGL6hd78YDEWofD4Bl5S1cc
+
 ---
 
 ## 🔧 Features
