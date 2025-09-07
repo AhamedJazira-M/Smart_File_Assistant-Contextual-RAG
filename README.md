@@ -26,8 +26,11 @@ https://www.linkedin.com/posts/ahamed-jazira2301_ai-rag-langchain-activity-73697
 ## 📁 Project Structure
 
 ├── Installations #Pip installations that are to be done before running the .py file. (colab)
+
 ├── context.csv # Your knowledge base (upload your own)
+
 ├── Smart File Assistant.py # Main RAG pipeline + Gradio interface
+
 ├── README.md # You're reading it!
 
 ## 🚀 How to Run (in Google Colab)
