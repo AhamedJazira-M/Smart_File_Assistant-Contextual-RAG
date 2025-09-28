@@ -25,7 +25,7 @@ https://www.linkedin.com/posts/ahamed-jazira2301_ai-rag-langchain-activity-73697
 
 ## 📁 Project Structure
 
-├── Installations #Pip installations that are to be done before running the .py file. (colab)
+├── Installations #Pip installations that are to be done before running the .py file.(colab)
 
 ├── context.csv # Your knowledge base (upload your own)
 
